@@ -1,10 +1,28 @@
 # USV_Deploy_UI
 
-A lightweight Flask web console for launching Unmanned Surface Vehicles (USVs)
-into a **MOOS-IvP MCTF** (Marine Capture-The-Flag) mission, with a machine-
-learning / heuristic policy entry per team. The operator selects a team and a
-submitted policy `.zip`, then launches boats one at a time — in simulation on a
-single machine, or out to real Raspberry-Pi-based USVs over SSH.
+A Flask web console for launching a **MOOS-IvP MCTF** (Marine Capture-The-Flag)
+mission — shoreside plus a roster of Unmanned Surface Vehicles (USVs), each
+running a machine-learning / heuristic policy entry. The operator stages a
+submitted policy `.zip` per team, then launches the whole field (or individual
+boats) from the browser. Runs in simulation on a single machine, or against real
+Raspberry-Pi-based USVs over SSH.
+
+The console manages all launched processes itself: no per-boat terminals. Output
+is captured to in-memory buffers (shown on demand in the page) and to per-process
+log files, and everything can be torn down with one **Stop All**.
+
+---
+
+## Quick start
+
+```bash
+./run.sh              # activates the env if needed, opens the browser, starts the app
+./run.sh --no-browser # same, but don't auto-open a browser (e.g. over SSH)
+```
+
+`run.sh` handles the Python environment for you (see **Environment** below), sets
+`MCTF_MISSION_PATH`, opens `http://127.0.0.1:5000`, and starts the app. Then in
+the UI: stage a ZIP per team, and click **Launch All**.
 
 ---
 
@@ -12,12 +30,21 @@ single machine, or out to real Raspberry-Pi-based USVs over SSH.
 
 ```
   Browser (templates/index.html)
-        |  HTTP (forms + a little JSON)
+        |  HTTP: launch/stop buttons + /status polling (JSON)
         v
-  app.py  -- Flask routes ----------------------------------------------
-        |   /submit         stage a chosen zip for a team
-        |   /agent_action   launch ONE boat (opens a gnome-terminal)
-        |   /get_rsync_command   preview the command (dry run)
+  app.py  -- Flask + process registry ----------------------------------
+        |   /launch_all        shoreside, then all boats (staggered)
+        |   /launch_boats      all boats from wp_config.json
+        |   /launch_shoreside  shoreside only (warp 4)
+        |   /launch_boat       one boat (per-boat button)
+        |   /stop_all          kill tracked groups + killmoos sweep
+        |   /stop_proc/<name>  kill one
+        |   /status            liveness + captured output (polled)
+        |   /submit            stage an entry zip for a team
+        |
+        |   Each launched process runs in its OWN process group; a reader
+        |   thread drains its stdout/stderr into an in-memory ring buffer
+        |   (live view) and a per-process file under ./logs (durable).
         v
   submission_runner.py  (one process per boat)
         |   unzip entry  ->  ./blue_entry/ or ./red_entry/
@@ -29,6 +56,22 @@ single machine, or out to real Raspberry-Pi-based USVs over SSH.
         v
   <team>_entry/solution.py  ->  heuristic_policy.Agent_0
 ```
+
+Shoreside is launched from the mission tree (`launch_shoreside.sh`), at the same
+time warp as the boats; it is the hub the boats connect to.
+
+## Controls
+
+| Control | Effect |
+|---------|--------|
+| **Launch All** | Shoreside first, brief settle, then every boat in the roster, staggered. |
+| **Launch Boats** | All boats from `wp_config.json` (assumes entries already staged). |
+| **Launch Shoreside** | Shoreside community only. |
+| Per-boat **Launch** / **Stop** | Start or stop a single boat. |
+| **Stop All** | Kill every tracked process group, then run `killmoos --force` to sweep any orphans. |
+| **Show output** | Expand a collapsible live-output panel for that process (hidden by default). |
+| **Copy output** | Copy a process's full captured output to the clipboard. |
+| Status dots | Green = up, red = down. Boats report by process liveness; shoreside reports by whether its MOOSDB port (9000) is listening. |
 
 ## Runtime modes
 
@@ -43,23 +86,71 @@ Selected by `"shore_ip"` in `wp_config.json`:
 
 | File | Role |
 |------|------|
-| `app.py` | Flask UI; builds and runs the per-boat launch commands. |
+| `run.sh` | One-command launcher: prepares the Python env, sets mission path, opens the browser, starts the app. |
+| `app.py` | Flask UI + process registry: launch/stop routes, output capture, status. |
 | `submission_runner.py` | Unzips one entry for its team color, then starts the launcher. |
 | `pyquaticus_moos_launcher.py` | Launches the MOOS surveyor, opens the bridge, runs the control loop. |
 | `wp_config.json` | Shore IP + per-team boat roster (id, name, ip, port). |
-| `submissions/` | Pool of uploaded entry zips the operator can choose from. |
+| `templates/index.html` | The console page (buttons, per-boat rows, output panels, status polling). |
+| `logs/` | Per-process output logs (generated; gitignored). |
+| `submissions/` | Pool of uploaded entry zips the operator stages from (zips gitignored). |
 
 ### Competition entry files (do not edit)
 
 The contents of `<team>_entry/` are **competitor-submitted** and are never
 modified by this project — the infrastructure conforms to them, not the other
-way around. For reference, each entry contains:
+way around. They are gitignored (transient staging, not ours to commit). For
+reference, each entry contains:
 
 | File | Role |
 |------|------|
 | `<team>_entry/solution.py` | Standard entry adapter exposing `solution.compute_action(...)`. |
 | `<team>_entry/heuristic_policy.py` | The actual policy (`Agent_0`) — roles, behaviors, navigation. |
 | `<team>_entry/gen_config.py` | Field geometry, Aquaticus field points, and the discrete `ACTION_MAP`. |
+
+## Process model (why no terminals)
+
+Each boat and shoreside is a backgrounded `subprocess.Popen` started in its own
+process group (`start_new_session=True`) and tracked in a registry. A daemon
+reader thread per process drains its merged stdout/stderr into:
+
+- an in-memory ring buffer (last ~500 lines) for the live page view, and
+- a per-process file under `./logs/<name>.log` for durable debugging.
+
+**Stopping** kills the whole process group (`os.killpg`), which tears down the
+launcher *and* the MOOS community it spawned — a bare PID kill would orphan the
+MOOS apps. **Stop All** additionally runs `killmoos --force` to sweep any MOOS
+processes not tracked by this session (e.g. from a crashed or external run).
+
+**Launch stagger:** boats are launched a few seconds apart
+(`BOAT_LAUNCH_STAGGER`). This avoids a race where two boats' bridges run
+`get_field.sh` concurrently and collide writing the shared `field.txt` /
+`flags.txt`, which would yield an empty zone and crash the bridge. If you ever
+see that crash under load, increase the stagger.
+
+## Environment
+
+The web app (`app.py`) needs only Flask, but the **boats it launches need
+`pyquaticus`** — and boat subprocesses inherit this app's interpreter (via
+`sys.executable`), so the app must run in a Python where `pyquaticus` imports.
+
+`run.sh` handles this: it first checks whether `pyquaticus` is importable in the
+current `python3`; if so it uses that and skips conda; otherwise it sources conda
+and activates the project env by absolute path, then re-verifies. If you launch
+`app.py` by hand instead, activate that env first, or you'll get
+`ModuleNotFoundError: No module named 'pyquaticus'` when a boat starts.
+
+Optional environment variables (read by `pyquaticus_moos_launcher.py`; `run.sh`
+sets `MCTF_MISSION_PATH` for you):
+
+```bash
+export MCTF_MISSION_PATH=/home/<you>/moos-ivp-mctf/missions/<mission>
+export MCTF_LOG_PATH=/path/to/surveyor/logs    # defaults to <mission>/logs
+```
+
+**Time warp:** in sim, boats and shoreside both launch at warp 4. They must
+match, or `pHelmIvP` reports large clock-skew errors. The console launches
+shoreside at warp 4 to match the boats automatically.
 
 ## Agent-id namespaces (important)
 
@@ -79,96 +170,53 @@ mapping and you must change all of them.
 The bundled heuristic policy returns **continuous** `[speed, heading]` actions
 (see `heuristic_policy.bearing_to_action`). The bridge in the launcher is
 therefore created with `action_space='continuous'` — confirmed working against
-the live `WestPoint2026` bridge (boats drive and `pRLMonitor` receives valid
-speeds/headings/actions). `gen_config.ACTION_MAP` defines a 17-entry **discrete**
-menu for policies that instead emit an integer index — if you swap in such a
-policy, set `action_space='discrete'` to match. This setting must agree with
-both what the policy emits and what the bridge supports.
-
-## Configuration
-
-`pyquaticus_moos_launcher.py` reads two optional environment variables:
-
-```bash
-export MCTF_MISSION_PATH=/home/<you>/moos-ivp-mctf/missions/<mission>
-export MCTF_LOG_PATH=/path/to/surveyor/logs    # defaults to <mission>/logs
-```
-
-If unset, `MCTF_MISSION_PATH` defaults to the thesis mission and the log path is
-derived from it (so the two can never disagree, which was a prior bug).
-
-## Running (simulation)
-
-```bash
-# 1. Ensure wp_config.json has "shore_ip": "localhost"
-# 2. Drop entry zips in ./submissions/
-# 3. Activate the pyquaticus conda environment FIRST (see note below)
-# 4. Start the console
-python app.py            # serves http://127.0.0.1:5000   (or: flask run)
-# 5. In the UI: choose team -> choose zip -> Submit, then launch each boat.
-```
-
-**Environment:** any terminal you launch from must have the pyquaticus conda
-env active *before* starting `app.py` (or before running `submission_runner.py`
-directly). The runner spawns the launcher via `sys.executable`, so the child
-inherits whatever interpreter the parent is running — which is only the right
-one (with `pyquaticus` installed) if the env was activated in that shell. A
-shell without it active falls through to the system/pyenv Python and fails with
-`ModuleNotFoundError: No module named 'pyquaticus'`.
-
-**Time warp:** in sim the boats are launched at timewarp 4. The shoreside MOOS
-community **must be launched at the same warp (4)** or `pHelmIvP` reports large
-clock-skew errors. Matching the two eliminates the skew.
+the live `WestPoint2026` bridge. `gen_config.ACTION_MAP` defines a 17-entry
+**discrete** menu for policies that instead emit an integer index — if you swap
+in such a policy, set `action_space='discrete'` to match. This setting must agree
+with both what the policy emits and what the bridge supports.
 
 ## Security note
 
-`app.py` interpolates operator-supplied form values (IP, port, names) into shell
-command strings (`sshpass`, `gnome-terminal`, `rsync`). This is acceptable on a
-trusted single-operator mission LAN only. `_safe_ip()` / `_safe_port()` validate
-the two free-form values, and the SSH password is stored in plaintext as a
-LAN-only convenience. **Do not expose this app on an untrusted or multi-user
-network without hardening it first.**
+On hardware (`shore_ip` != localhost), `app.py` interpolates operator-supplied
+values (IP, port) into SSH/rsync commands; `_safe_ip()` / `_safe_port()` validate
+the free-form ones, and the SSH password is stored in plaintext as a LAN-only
+convenience. **Do not expose this app on an untrusted or multi-user network
+without hardening it first.**
 
-## Notable fixes in this cleanup
+## History of fixes
 
-1. **`app.py`** — `handle_submission` hardware branch was a non-f-string, so the
-   rsync command shipped literal `{zip_file}` / `{USERNAME}` / `{ip}` to the
-   shell. Now interpolated; added `_safe_ip()` / `_safe_port()` validation.
-2. **`submission_runner.py`** — removed a dead `from <team>_entry.solution import
-   solution` that did nothing and could crash before the unzip completed;
-   tightened blue/red routing from `"b" in color` to `color == 'blue'`.
-3. **`submission_runner.py`** — spawn the launcher with `sys.executable` instead
-   of the bare string `'python3'`, so the child process inherits the same
-   interpreter (and conda env) as the parent rather than re-resolving `python3`
-   from `PATH` (where a pyenv shim could select the wrong, pyquaticus-less one).
-4. **`pyquaticus_moos_launcher.py`** — `action_space` corrected to `'continuous'`
-   to match the policy; mission/log paths made env-configurable and consistent;
-   removed the unreachable post-`while True` code and the discarded in-loop
-   `normalize`/`state_to_obs` calls.
+Earlier cleanup (entry/launcher correctness):
 
-The competition entry files (`<team>_entry/solution.py`, `heuristic_policy.py`,
-`gen_config.py`) were **not** modified — they are competitor submissions and the
-infrastructure conforms to their contract.
+1. `submission_runner.py` — spawn the launcher with `sys.executable` (not bare
+   `'python3'`), so the child inherits the right interpreter/conda env instead of
+   re-resolving from `PATH` (where a pyenv shim could pick a pyquaticus-less one).
+2. `pyquaticus_moos_launcher.py` — `action_space` corrected to `'continuous'`;
+   mission/log paths made env-configurable; removed unreachable post-loop code.
+3. `submission_runner.py` — removed a dead pre-unzip import; tightened blue/red
+   routing from `"b" in color` to `color == 'blue'`.
 
-## Status / known gaps
+No-terminal redesign (this version):
 
-Resolved during cleanup:
+4. Replaced per-boat `gnome-terminal` spawning with a managed process registry +
+   output capture (in-memory buffers + `./logs` files).
+5. Added **Launch All / Launch Boats / Launch Shoreside / Stop All** plus
+   per-boat controls; **Stop All** runs `killmoos --force` to sweep orphans.
+6. Added live output panels (toggle + copy-to-clipboard) and `/status` polling.
+7. Added `run.sh` (env handling + browser open + start) and shoreside launching
+   from the console.
+8. Fixed the parallel-launch field-file race via a launch stagger; shoreside
+   liveness now reported by MOOSDB-port check (its launch script exits early).
 
-- **`index.html` form contract — verified.** The form fields (`team`, `boat_id`,
-  `boat_name`, `boat_ip`, `boat_port`, `action`) match what `app.py` reads. The
-  `action` (form POST) vs `target` (JSON body to `/get_rsync_command`) split is
-  internally consistent, not a bug.
-- **`launch_surveyor.sh` interaction — verified.** The deploy UI calls it with
-  the letter vehicle form (e.g. `-vu`) plus a role flag and `--role=CONTROL`.
-  The cleaned `launch_surveyor.sh` intentionally accepts both letter (`-vu`) and
-  numbered (`-v3`) forms so both this UI and the mission's `launch_sim.sh` work.
+The competition entry files were **not** modified — they are competitor
+submissions and the infrastructure conforms to their contract.
 
-Still open:
+## Known gaps
 
 - **Hardware rsync vs runner path.** Hardware mode rsyncs entries to `~/entries/`
-  on each boat, but `/agent_action` passes `--entry_name=./<team>_entry/test.zip`.
-  Reconcile these two locations before a real hardware run.
-- **`index.html` C-USV button (minor).** The "C-USV" button references
-  `{{ action }}` outside the `{% for action, label %}` loop, so it renders empty.
-  Harmless today (the previewed command doesn't use the target), but a latent bug.
-- **`static/style.css`** was not part of this pass.
+  on each boat, but the per-boat launch passes `--entry_name=./<team>_entry/
+  test.zip`. Reconcile before a real hardware run.
+- **`static/style.css`** is optional — the page ships with inline styling so it
+  renders without it.
+- **Launch stagger is timing-based.** Robust in practice; the fully race-proof
+  fix would be making the bridge read a pre-generated field file rather than
+  regenerating per boat (a `pyquaticus` change).
