@@ -1,0 +1,38 @@
+# =============================================================================
+# .gitignore  --  USV_Deploy_UI
+# -----------------------------------------------------------------------------
+# Excludes competitor submissions (not ours to commit), transient staging, and
+# generated/runtime files. Source files (app.py, submission_runner.py,
+# pyquaticus_moos_launcher.py, run.sh, templates/, static/, wp_config.json,
+# README.md) are tracked; everything below is not.
+# =============================================================================
+
+# --- Competition entries (competitor-submitted; transient staging) -----------
+# Staged entries are unzipped here at launch; the zips are other people's
+# submissions. Neither belongs in this repo.
+blue_entry/
+red_entry/
+submissions/*.zip
+
+# --- Per-boat / shoreside output logs (generated every run) ------------------
+logs/
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# --- Editor / backup litter --------------------------------------------------
+*.bak
+*.save
+*~
+*.swp
+*.swo
+.vscode/
+
+# --- OS cruft ----------------------------------------------------------------
+.DS_Store
+Thumbs.db

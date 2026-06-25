@@ -1,62 +1,105 @@
-import docker
+# =============================================================================
+# submission_runner.py  --  Unpack one entry and start its boat driver
+# -----------------------------------------------------------------------------
+# PURPOSE
+#   The middle layer between the Flask UI (app.py) and the per-boat driver
+#   (pyquaticus_moos_launcher.py). For a single boat it:
+#     1. Unzips the selected entry into ./blue_entry/ or ./red_entry/ depending
+#        on team color (this is where solution.py + heuristic_policy.py land).
+#     2. Invokes pyquaticus_moos_launcher.py with the boat's parameters, which
+#        launches the MOOS surveyor and runs the policy control loop.
+#
+# WHY A SEPARATE PROCESS
+#   Each boat gets its own runner invocation (one gnome-terminal per boat from
+#   app.py). Keeping unzip + launch together here means the launcher can always
+#   assume the entry is already extracted next to it.
+#
+# HISTORY
+#   The commented-out `docker` blocks are from an earlier design where each
+#   entry ran in an isolated container (image jkliem/wp25:v2). That has been
+#   replaced by local unzip + direct execution. The dead code is intentionally
+#   retained for reference until the container path is formally retired.
+# =============================================================================
+
 import subprocess
-import time
-import sys
-import socket
-import random
 import argparse
-import signal
 import sys
 
 
-entry_docker = None
-def signal_handler(sig, frame):
-    if entry_docker:
-        print('Closing Docker')
-        #TODO Find command to locate logs and copy all log files
-        entry_docker.kill()
-    sys.exit(0)
+def run_game(entry_path, sim, color, boat_id, boat_name,
+             timewarp, shore_ip, boat_ip, boat_port):
+    """Unzip `entry_path` for the given team color, then run the launcher.
 
+    The unzip target is chosen by color: blue -> ./blue_entry/, red ->
+    ./red_entry/. `unzip -o` overwrites any prior extraction so a re-run always
+    reflects the latest zip.
 
-def run_game(entry_path, sim, color, boat_id, boat_name, timewarp, shore_ip, boat_ip, boat_port):
-    global entry_docker
-    client = docker.from_env()
-    entry_docker = client.containers.run('jkliem/wp25:v2',command='sleep infinity', detach=True, network_mode='host')
-    #entry_docker.start()
-    subprocess.run(['docker','cp', entry_path, str(entry_docker.short_id)+':/home/moos/working_dir/test.zip']) #Copy file into new docker
-    #Unzip copied entry
-    print(entry_docker.exec_run('unzip /home/moos/working_dir/test.zip -d /home/moos/working_dir/'))
-    if sim:
-        arguments = '--sim'
+    NOTE: we deliberately do NOT import solution here. An earlier version did
+    `from blue_entry.solution import solution` at this point, which (a) was
+    never used in this function and (b) could crash if the unzip had not yet
+    produced solution.py. The launcher imports the solution itself, after this
+    extraction has completed.
+    """
+    # Compare exactly rather than `"b" in color` so a future color name that
+    # merely contains the letter 'b' can't be misrouted to the blue branch.
+    if color == 'blue':
+        subprocess.run(['unzip', '-o', entry_path, '-d', './blue_entry/'])
     else:
-        arguments = ' '
-    arguments += ' --color=' + color
-    arguments += ' --boat_id=' + boat_id
-    arguments += ' --boat_name=' + boat_name
-    arguments += ' --timewarp=' + str(timewarp)
-    arguments += ' --shore_ip ' + shore_ip 
-    arguments += ' --boat_ip='+ boat_ip 
-    arguments += ' --boat_port=' + str(boat_port)
-    print("Launching with Arguments: ", arguments)
-    print("Entry Docker: ", entry_docker.short_id)
-    entry_docker.exec_run('sh -c "python3 -u pyquaticus_moos_launcher.py '+arguments+' > out.txt 2>&1"', detach=True)# Run Entry
-    return 
+        subprocess.run(['unzip', '-o', entry_path, '-d', './red_entry/'])
+
+    # Build the launcher command as an explicit argv list (no shell), so values
+    # are passed as discrete arguments and never re-parsed by a shell.
+    #
+    # Use sys.executable (the ABSOLUTE path to the interpreter running THIS
+    # process) rather than the bare name 'python3'. 'python3' would be re-resolved
+    # from PATH in the child, and a pyenv shim ahead of the active conda env on
+    # PATH can intercept it and select the wrong interpreter -- one without
+    # pyquaticus installed -> ModuleNotFoundError. sys.executable guarantees the
+    # child runs in the same environment (e.g. conda env-full) as the parent.
+    cmd = [sys.executable, '-u', 'pyquaticus_moos_launcher.py']
+    if sim:
+        cmd.append('--sim')
+    cmd += [
+        f'--color={color}',
+        f'--boat_id={boat_id}',
+        f'--boat_name={boat_name}',
+        f'--timewarp={timewarp}',
+        f'--shore_ip={shore_ip}',
+        f'--boat_ip={boat_ip}',
+        f'--boat_port={boat_port}',
+    ]
+    print("Launching launcher with:", ' '.join(cmd))
+    # check=True surfaces a non-zero launcher exit as a CalledProcessError in
+    # the watching terminal, rather than failing silently.
+    subprocess.run(cmd, check=True)
 
 
 if __name__ == "__main__":
-    entry_folder = './entries/'
-    parser = argparse.ArgumentParser(description='Deploy the MCTF2025 Policies on USV\'s via MOOS-IvP')
-    parser.add_argument('--entry_name', required=True, type=str, help='Name of zip to be loaded in (do not add leading /)')
-    parser.add_argument('--sim', action='store_true', help="Specify if simulation or not.")
-    parser.add_argument('--color', required=True, choices=['red', 'blue'], help="Specify if red or blue team is the trained agent.")
-    parser.add_argument('--boat_id', required=True, choices=["blue_one", "blue_two", "blue_three", "red_one", "red_two", "red_three"], help="Specify the boat id.")
-    parser.add_argument('--boat_name', required=False, choices=['s', 't', 'u', 'v', 'w', 'x', 'y', 'z'], help="Specify the boat name.")
-    parser.add_argument('--timewarp', required=True, type=int, default=4, help='Specify the timewarp.')
-    parser.add_argument('--shore_ip', required=True, type=str, default='localhost', help='Specify the shoreside IP.')
-    parser.add_argument('--boat_ip', required=True, type=str, default='localhost', help='Specify the USV IP.')
-    parser.add_argument('--boat_port', required=True, type=int, default=9012, help='Specify the USV Port to Use.')
+    parser = argparse.ArgumentParser(
+        description="Deploy the MCTF2026 policies on USVs via MOOS-IvP")
+    parser.add_argument('--entry_name', required=True, type=str,
+                        help="Path to the entry zip to load (no leading /).")
+    parser.add_argument('--sim', action='store_true',
+                        help="Run in simulation rather than on hardware.")
+    parser.add_argument('--color', required=True, choices=['red', 'blue'],
+                        help="Which team is the trained/controlled agent.")
+    parser.add_argument('--boat_id', required=True,
+                        choices=["blue_one", "blue_two", "blue_three",
+                                 "red_one", "red_two", "red_three"],
+                        help="Logical boat id within the team.")
+    parser.add_argument('--boat_name', required=False,
+                        choices=['s', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+                        help="Physical boat letter (surveyor vehicle name).")
+    parser.add_argument('--timewarp', required=True, type=int, default=4,
+                        help="MOOS time warp (sim speed multiplier).")
+    parser.add_argument('--shore_ip', required=True, type=str, default='localhost',
+                        help="Shoreside MOOSDB IP ('localhost' in sim).")
+    parser.add_argument('--boat_ip', required=True, type=str, default='localhost',
+                        help="This boat's MOOSDB IP.")
+    parser.add_argument('--boat_port', required=True, type=int, default=9012,
+                        help="This boat's MOOSDB port.")
     args = parser.parse_args()
-    entry_path = args.entry_name
-    signal.signal(signal.SIGINT, signal_handler)
-    run_game(entry_path, args.sim, args.color, args.boat_id, args.boat_name, args.timewarp, args.shore_ip, args.boat_ip, args.boat_port)
-    signal.pause()
+
+    run_game(args.entry_name, args.sim, args.color, args.boat_id,
+             args.boat_name, args.timewarp, args.shore_ip,
+             args.boat_ip, args.boat_port)

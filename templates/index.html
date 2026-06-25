@@ -4,106 +4,241 @@
     <meta charset="UTF-8">
     <title>USV Pyquaticus Deployer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Minimal inline styling so the page is usable even without style.css.
+           Move to static/style.css if you prefer. */
+        body { font-family: system-ui, sans-serif; margin: 1.5rem; }
+        .global-controls { margin-bottom: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+        .global-controls button { padding: .6rem 1rem; font-weight: 600; cursor: pointer; }
+        .btn-all     { background:#1d4ed8; color:#fff; border:none; border-radius:6px; }
+        .btn-boats   { background:#047857; color:#fff; border:none; border-radius:6px; }
+        .btn-shore   { background:#7c3aed; color:#fff; border:none; border-radius:6px; }
+        .btn-stop    { background:#b91c1c; color:#fff; border:none; border-radius:6px; }
+        .team-card { border:1px solid #ddd; border-radius:8px; padding:1rem; margin-bottom:1rem; }
+        .team-header.blue { color:#1d4ed8; }
+        .team-header.red  { color:#b91c1c; }
+        .agent-entry { border-top:1px solid #eee; padding:.6rem 0; }
+        .agent-row { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+        .agent-info { font-size:.9rem; color:#333; flex:1; }
+        .status-dot { display:inline-block; width:.7rem; height:.7rem; border-radius:50%;
+                      background:#bbb; margin-right:.4rem; vertical-align:middle; }
+        .status-dot.alive { background:#16a34a; }
+        .status-dot.dead  { background:#b91c1c; }
+        .agent-buttons button, .agent-buttons a { padding:.35rem .7rem; cursor:pointer; }
+        .output-panel { display:none; margin-top:.5rem; background:#0b1021; color:#cdd6f4;
+                        font-family: ui-monospace, monospace; font-size:.78rem;
+                        padding:.6rem; border-radius:6px; max-height:240px; overflow:auto;
+                        white-space:pre-wrap; }
+        .submission-form { margin-top:.8rem; }
+        #flash { margin:.5rem 0; font-size:.9rem; color:#555; min-height:1.2rem; }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>USV Pyquaticus Deployer</h1>
 
+        <!-- Global controls: the three launch buttons + stop-all -->
+        <div class="global-controls">
+            <button class="btn-all"   onclick="post('/launch_all')">Launch All (shoreside + boats)</button>
+            <button class="btn-boats" onclick="post('/launch_boats')">Launch Boats</button>
+            <button class="btn-shore" onclick="post('/launch_shoreside')">Launch Shoreside</button>
+            <button class="btn-stop"  onclick="stop('/stop_all', 'everything')">Stop All</button>
+        </div>
+        <div id="flash"></div>
+
+        <!-- Shoreside row (its own status + output panel) -->
+        <div class="team-card">
+            <div class="agent-row">
+                <div class="agent-info">
+                    <span class="status-dot" id="dot-shoreside"></span>
+                    <strong>shoreside</strong>
+                </div>
+                <div class="agent-buttons">
+                    <button onclick="post('/launch_shoreside')">Launch</button>
+                    <button onclick="stop('/stop_proc/shoreside', 'shoreside')">Stop</button>
+                    <button onclick="toggleOutput('shoreside')">Show output</button>
+                    <button onclick="copyOutput('shoreside')">Copy output</button>
+                </div>
+            </div>
+            <div class="output-panel" id="out-shoreside"></div>
+        </div>
+
+        <!-- Per-team boat rosters -->
         {% for team, agents in teams.items() %}
         <div class="team-card">
             <h2 class="team-header {{ team }}">{{ team | capitalize }} Team</h2>
 
-            <div class="agent-list">
-                {% for agent in agents %}
-                <div class="agent-entry">
+            {% for agent in agents %}
+            <div class="agent-entry">
+                <div class="agent-row">
                     <div class="agent-info">
-                        <div><strong>Boat ID:</strong> {{ agent.boat_id }}</div>
-                        <div><strong>Boat Name:</strong> {{ agent.boat_name }}</div>
-                        <div><strong>IP:</strong> {{ agent.ip }}</div>
-                        <div><strong>Port:</strong> {{ agent.port }}</div>
+                        <span class="status-dot" id="dot-{{ agent.boat_id }}"></span>
+                        <strong>{{ agent.boat_id }}</strong>
+                        &nbsp;name {{ agent.boat_name }} &middot;
+                        {{ agent.ip }}:{{ agent.port }}
                     </div>
                     <div class="agent-buttons">
-                        {% for action, label in [
-                            ('deploy_usv', 'D-USV'),
-                        ] %}
-                        <form action="{{ url_for('agent_action') }}" method="POST">
-                            <input type="hidden" name="team" value="{{ team }}">
-                            <input type="hidden" name="boat_id" value="{{ agent.boat_id }}">
-                            <input type="hidden" name="boat_name" value="{{ agent.boat_name }}">
-                            <input type="hidden" name="boat_ip" value="{{ agent.ip }}">
-                            <input type="hidden" name="boat_port" value="{{ agent.port }}">
-                            <input type="hidden" name="action" value="{{ action }}">
-                            <button type="submit">{{ label }}</button>
-                        </form>
-                        
-                        {% endfor %}
-                        <button onclick="copyCommand('{{ team }}', '{{ agent.boat_id }}', '{{ agent.boat_name }}', '{{ agent.ip }}', '{{ agent.port }}', '{{ action }}')">C-USV</button>
+                        <button onclick="launchBoat('{{ agent.boat_id }}')">Launch</button>
+                        <button onclick="stop('/stop_proc/{{ agent.boat_id }}', '{{ agent.boat_id }}')">Stop</button>
+                        <button onclick="toggleOutput('{{ agent.boat_id }}')">Show output</button>
+                        <button onclick="copyOutput('{{ agent.boat_id }}')">Copy output</button>
                     </div>
                 </div>
-                {% endfor %}
+                <div class="output-panel" id="out-{{ agent.boat_id }}"></div>
             </div>
+            {% endfor %}
 
+            <!-- Entry staging for this team (unchanged flow) -->
             <form action="{{ url_for('submit') }}" method="POST" class="submission-form">
                 <input type="hidden" name="team" value="{{ team }}">
-                <label for="{{ team }}_zip">Available ZIPs:</label>
+                <label for="{{ team }}_zip">Stage entry ZIP:</label>
                 <select name="zip_file" id="{{ team }}_zip" required>
                     <option value="">-- Select ZIP --</option>
                     {% for zip in zip_files %}
                         <option value="{{ zip }}">{{ zip }}</option>
                     {% endfor %}
                 </select>
-                <button type="submit">Copy to USV</button>
+                <button type="submit">Stage to {{ team }}_entry</button>
             </form>
         </div>
         {% endfor %}
     </div>
-</body>
+
 <script>
-async function copyCommand(team, boat_id, boat_name, boat_ip, boat_port, target) {
-    const filename = "test.zip";  // dummy test value
+// Which output panels are currently expanded (so polling only repaints those).
+const expanded = new Set();
 
+function flash(msg) {
+    document.getElementById('flash').textContent = msg;
+}
+
+// Generic POST helper for the no-body buttons (launch_all, stop_proc, etc.)
+async function post(path) {
+    flash('Working: ' + path + ' ...');
     try {
-        const response = await fetch("/get_rsync_command", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({team, boat_id, boat_name, boat_ip, boat_port, target})
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-            await navigator.clipboard.writeText(data.command);
-            alert(`Copied Command to Clipboard\n${data.command}`);
+        const r = await fetch(path, { method: 'POST' });
+        const data = await r.json();
+        if (data.results) {
+            const lines = data.results.map(x => `${x.message}`);
+            flash(lines.join('  |  '));
         } else {
-            alert("Server error: " + (data.error || "Unknown"));
+            flash(data.message || 'done');
         }
-    } catch (err) {
-        alert("Fetch failed: " + err);
+        refresh();
+    } catch (e) {
+        flash('Request failed: ' + e);
     }
 }
+
+// Dedicated stop helper: shows a clear confirmation and refreshes dots at once
+// (don't wait for the 1.5s poll, so the user sees the effect immediately).
+async function stop(path, label) {
+    flash('Stopping ' + label + ' ...');
+    try {
+        const r = await fetch(path, { method: 'POST' });
+        const data = await r.json();
+        let msg;
+        if (data.results) {
+            msg = 'STOP — ' + data.results.map(x => x.message).join('  |  ');
+        } else {
+            msg = 'STOP — ' + (data.message || 'done');
+        }
+        flash(msg);
+        // immediate refresh, then a second one shortly after so dots reflect
+        // processes that take a moment to actually die.
+        refresh();
+        setTimeout(refresh, 800);
+    } catch (e) {
+        flash('Stop failed: ' + e);
+    }
+}
+
+// Per-boat launch posts the boat_id as form data.
+async function launchBoat(boatId) {
+    flash('Launching ' + boatId + ' ...');
+    try {
+        const body = new URLSearchParams({ boat_id: boatId });
+        const r = await fetch('/launch_boat', { method: 'POST', body });
+        const data = await r.json();
+        flash(boatId + ': ' + (data.message || 'done'));
+        refresh();
+    } catch (e) {
+        flash('Request failed: ' + e);
+    }
+}
+
+// Copy a process's full captured output to the clipboard. Fetches the live
+// buffer from /status (so it works even if the panel was never expanded).
+async function copyOutput(name) {
+    try {
+        const r = await fetch('/status');
+        const data = await r.json();
+        const rec = data[name];
+        if (!rec || !rec.output || rec.output.length === 0) {
+            flash('No output captured for ' + name + ' yet.');
+            return;
+        }
+        const text = rec.output.join('\n');
+        try {
+            await navigator.clipboard.writeText(text);
+            flash('Copied ' + name + ' output (' + rec.output.length + ' lines) to clipboard.');
+        } catch (clipErr) {
+            // clipboard API can fail on non-https/localhost-edge cases; fall back
+            // to a hidden textarea + execCommand.
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            flash('Copied ' + name + ' output (' + rec.output.length + ' lines) to clipboard.');
+        }
+    } catch (e) {
+        flash('Copy failed: ' + e);
+    }
+}
+
+// Toggle a process's output panel. Expanding adds it to the polled set.
+function toggleOutput(name) {
+    const panel = document.getElementById('out-' + name);
+    if (!panel) return;
+    const showing = panel.style.display === 'block';
+    panel.style.display = showing ? 'none' : 'block';
+    if (showing) expanded.delete(name); else expanded.add(name);
+    refresh();
+}
+
+// Poll /status: update the liveness dots for every process and repaint the
+// output of any expanded panel.
+async function refresh() {
+    try {
+        const r = await fetch('/status');
+        const data = await r.json();
+        // Update dots for every known process name on the page.
+        document.querySelectorAll('[id^="dot-"]').forEach(dot => {
+            const name = dot.id.slice(4);
+            const rec = data[name];
+            dot.classList.remove('alive', 'dead');
+            if (rec) dot.classList.add(rec.alive ? 'alive' : 'dead');
+        });
+        // Repaint expanded output panels.
+        expanded.forEach(name => {
+            const panel = document.getElementById('out-' + name);
+            const rec = data[name];
+            if (panel && rec) {
+                const atBottom = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 20;
+                panel.textContent = rec.output.join('\n');
+                if (atBottom) panel.scrollTop = panel.scrollHeight;  // autoscroll if at bottom
+            }
+        });
+    } catch (e) {
+        // Silent: transient poll failures shouldn't spam the flash line.
+    }
+}
+
+// Poll every 1.5s for live status + output.
+setInterval(refresh, 1500);
+refresh();
 </script>
-<!-- <script>
-async function copyCommand(team, ip, target) {
-    try {
-        const response = await fetch("/get_rsync_command", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ team, ip, target, filename })
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-            await navigator.clipboard.writeText(data.command);
-            alert(`Copied ${target.toUpperCase()} command to clipboard:\n${data.command}`);
-        } else {
-            alert("Error from server: " + (data.error || "Unknown error"));
-        }
-    } catch (err) {
-        alert("Failed to fetch command: " + err);
-    }
-}
-</script> -->
+</body>
 </html>
