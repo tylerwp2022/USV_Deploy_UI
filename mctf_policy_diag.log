@@ -1,0 +1,225 @@
+[23:59:34] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[23:59:34] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[23:59:34] blue_one: MOOS run() returned (async connect started, port 9015)
+[23:59:34] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[23:59:37] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[23:59:37] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[23:59:37] blue_two: MOOS run() returned (async connect started, port 9016)
+[23:59:37] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[23:59:40] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=attack:commanded on port 9015
+[23:59:40] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[23:59:40] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[23:59:40] blue_three: MOOS run() returned (async connect started, port 9017)
+[23:59:40] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[23:59:41] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[23:59:43] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[00:06:25] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[00:06:25] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[00:06:25] blue_one: MOOS run() returned (async connect started, port 9015)
+[00:06:25] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[00:06:28] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[00:06:28] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[00:06:28] blue_two: MOOS run() returned (async connect started, port 9016)
+[00:06:28] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[00:06:31] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[00:06:31] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[00:06:31] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[00:06:31] blue_three: MOOS run() returned (async connect started, port 9017)
+[00:06:31] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[00:06:32] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[00:06:34] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[11:11:14] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[11:11:14] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[11:11:14] blue_one: MOOS run() returned (async connect started, port 9015)
+[11:11:14] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[11:11:17] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[11:11:17] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[11:11:17] blue_two: MOOS run() returned (async connect started, port 9016)
+[11:11:17] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[11:11:20] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[11:11:20] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[11:11:20] blue_three: MOOS run() returned (async connect started, port 9017)
+[11:11:20] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[11:11:21] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[11:11:23] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[11:11:25] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[11:23:48] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[11:23:48] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[11:23:48] blue_one: MOOS run() returned (async connect started, port 9015)
+[11:23:48] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[11:23:51] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[11:23:51] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[11:23:51] blue_two: MOOS run() returned (async connect started, port 9016)
+[11:23:51] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[11:23:54] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[11:23:54] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[11:23:54] blue_three: MOOS run() returned (async connect started, port 9017)
+[11:23:54] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[11:23:55] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[11:23:57] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[11:23:59] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[11:55:32] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[11:55:32] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[11:55:32] blue_one: MOOS run() returned (async connect started, port 9015)
+[11:55:32] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[11:55:35] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[11:55:35] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[11:55:35] blue_two: MOOS run() returned (async connect started, port 9016)
+[11:55:35] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[11:55:38] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[11:55:38] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[11:55:38] blue_three: MOOS run() returned (async connect started, port 9017)
+[11:55:38] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[11:55:39] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[11:55:41] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[11:55:43] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[12:10:42] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[12:10:42] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[12:10:42] blue_one: MOOS run() returned (async connect started, port 9015)
+[12:10:42] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[12:10:45] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[12:10:45] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[12:10:45] blue_two: MOOS run() returned (async connect started, port 9016)
+[12:10:45] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[12:10:48] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[12:10:48] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[12:10:48] blue_three: MOOS run() returned (async connect started, port 9017)
+[12:10:48] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[12:10:48] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[12:10:49] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[12:10:51] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[12:18:59] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[12:18:59] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[12:18:59] blue_one: MOOS run() returned (async connect started, port 9015)
+[12:18:59] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[12:19:02] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[12:19:02] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[12:19:02] blue_two: MOOS run() returned (async connect started, port 9016)
+[12:19:02] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[12:19:05] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[12:19:05] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[12:19:05] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[12:19:05] blue_three: MOOS run() returned (async connect started, port 9017)
+[12:19:05] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[12:19:06] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[12:19:08] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[12:57:53] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[12:57:53] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[12:57:53] blue_one: MOOS run() returned (async connect started, port 9015)
+[12:57:53] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[12:57:55] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[12:57:55] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[12:57:55] blue_two: MOOS run() returned (async connect started, port 9016)
+[12:57:55] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[12:57:59] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[12:57:59] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[12:57:59] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[12:57:59] blue_three: MOOS run() returned (async connect started, port 9017)
+[12:57:59] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[12:58:00] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[12:58:01] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[13:04:39] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[13:04:39] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[13:04:39] blue_one: MOOS run() returned (async connect started, port 9015)
+[13:04:39] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[13:04:42] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[13:04:42] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[13:04:42] blue_two: MOOS run() returned (async connect started, port 9016)
+[13:04:42] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[13:04:45] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[13:04:45] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[13:04:45] blue_three: MOOS run() returned (async connect started, port 9017)
+[13:04:45] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[13:04:45] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[13:04:46] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[13:04:48] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[13:11:46] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[13:11:46] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[13:11:46] blue_one: MOOS run() returned (async connect started, port 9015)
+[13:11:46] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[13:11:49] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[13:11:49] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[13:11:49] blue_two: MOOS run() returned (async connect started, port 9016)
+[13:11:49] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[13:11:52] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[13:11:52] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[13:11:52] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[13:11:52] blue_three: MOOS run() returned (async connect started, port 9017)
+[13:11:52] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[13:11:53] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[13:11:55] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[15:04:26] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[15:04:26] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[15:04:26] blue_one: MOOS run() returned (async connect started, port 9015)
+[15:04:27] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[15:04:29] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[15:04:29] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[15:04:29] blue_two: MOOS run() returned (async connect started, port 9016)
+[15:04:30] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[15:04:32] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[15:04:32] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[15:04:32] blue_three: MOOS run() returned (async connect started, port 9017)
+[15:04:33] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[15:04:33] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[15:04:35] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[15:04:37] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[15:11:24] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[15:11:24] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[15:11:24] blue_one: MOOS run() returned (async connect started, port 9015)
+[15:11:24] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[15:11:27] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[15:11:27] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[15:11:27] blue_two: MOOS run() returned (async connect started, port 9016)
+[15:11:27] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[15:11:30] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[15:11:30] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[15:11:30] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[15:11:30] blue_three: MOOS run() returned (async connect started, port 9017)
+[15:11:30] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[15:11:31] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[15:11:33] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[15:13:06] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[15:13:06] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[15:13:06] blue_one: MOOS run() returned (async connect started, port 9015)
+[15:13:06] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[15:13:09] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[15:13:09] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[15:13:09] blue_two: MOOS run() returned (async connect started, port 9016)
+[15:13:09] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[15:13:12] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[15:13:13] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[15:13:13] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[15:13:13] blue_three: MOOS run() returned (async connect started, port 9017)
+[15:13:13] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[15:13:14] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[15:13:15] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[15:28:23] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[15:28:23] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[15:28:23] blue_one: MOOS run() returned (async connect started, port 9015)
+[15:28:23] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[15:28:26] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[15:28:26] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[15:28:26] blue_two: MOOS run() returned (async connect started, port 9016)
+[15:28:26] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[15:28:29] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[15:28:29] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[15:28:29] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[15:28:29] blue_three: MOOS run() returned (async connect started, port 9017)
+[15:28:29] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[15:28:30] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[15:28:32] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016
+[15:29:43] blue_one: PostureControl init: _BOAT_ID=blue_one _MOOS_PORT=9015 HAS_PYMOOS=True env_BOAT_ID=blue_one env_MOOS_PORT=9015
+[15:29:43] blue_one: MOOS connect attempt: localhost:9015 as pMCTFCtrl_blue_one (HAS_PYMOOS=True)
+[15:29:43] blue_one: MOOS run() returned (async connect started, port 9015)
+[15:29:43] blue_one: MOOS on_connect fired -> CONNECTED on port 9015; registering MCTF_POSTURE_blue_one, MCTF_ROLE_blue_one
+[15:29:46] blue_two: PostureControl init: _BOAT_ID=blue_two _MOOS_PORT=9016 HAS_PYMOOS=True env_BOAT_ID=blue_two env_MOOS_PORT=9016
+[15:29:46] blue_two: MOOS connect attempt: localhost:9016 as pMCTFCtrl_blue_two (HAS_PYMOOS=True)
+[15:29:46] blue_two: MOOS run() returned (async connect started, port 9016)
+[15:29:46] blue_two: MOOS on_connect fired -> CONNECTED on port 9016; registering MCTF_POSTURE_blue_two, MCTF_ROLE_blue_two
+[15:29:49] blue_one: publish_status OK: wrote MCTF_ACTIVE_blue_one=defend:auto on port 9015
+[15:29:49] blue_three: PostureControl init: _BOAT_ID=blue_three _MOOS_PORT=9017 HAS_PYMOOS=True env_BOAT_ID=blue_three env_MOOS_PORT=9017
+[15:29:49] blue_three: MOOS connect attempt: localhost:9017 as pMCTFCtrl_blue_three (HAS_PYMOOS=True)
+[15:29:49] blue_three: MOOS run() returned (async connect started, port 9017)
+[15:29:49] blue_three: MOOS on_connect fired -> CONNECTED on port 9017; registering MCTF_POSTURE_blue_three, MCTF_ROLE_blue_three
+[15:29:50] blue_three: publish_status OK: wrote MCTF_ACTIVE_blue_three=defend:auto on port 9017
+[15:29:52] blue_two: publish_status OK: wrote MCTF_ACTIVE_blue_two=defend:auto on port 9016

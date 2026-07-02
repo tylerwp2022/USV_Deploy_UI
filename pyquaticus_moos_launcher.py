@@ -185,6 +185,9 @@ if __name__ == "__main__":
         action_space='continuous',
         quiet=False,
     )
+    
+    os.environ["MCTF_BOAT_ID"] = args.boat_id   # e.g. "blue_one" — tells the entry its own name
+    os.environ["MCTF_MOOS_PORT"] = str(args.boat_port)      # ADD THIS
 
     # ---- Control loop ----------------------------------------------------
     # Instantiate the entry's policy. compute_action() takes:

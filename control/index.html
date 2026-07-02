@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCTF Control</title>
+<style>
+  /* ---- Tokens: tactical console. One amber accent for "commanded", team
+     tints (blue/red) only as left-edge identity, grey = auto/hands-off. ---- */
+  :root {
+    --bg:#0d1117; --panel:#151b24; --panel-2:#1b232e; --line:#2a3543;
+    --ink:#e6edf3; --ink-dim:#8b97a6; --ink-faint:#5a6675;
+    --accent:#f0a202; --accent-dim:#7a5a14; --auto:#56657a;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+    --blue:#388bfd; --red:#f85149;
+    --radius:4px;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--mono); font-size:14px; line-height:1.4; }
+  body { max-width:880px; margin:0 auto; padding:24px 18px 48px; }
+
+  header { display:flex; align-items:baseline; justify-content:space-between;
+    gap:12px; border-bottom:1px solid var(--line); padding-bottom:12px; }
+  h1 { font-size:15px; letter-spacing:0.14em; text-transform:uppercase;
+    font-weight:600; margin:0; }
+  h1 .sub { color:var(--ink-faint); font-weight:400; letter-spacing:0.08em; }
+  .transport { display:flex; align-items:center; gap:8px; font-size:12px;
+    letter-spacing:0.06em; }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--ink-faint); }
+  .dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok);}
+  .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn);}
+  .transport .label{color:var(--ink-dim);} .transport .mode{color:var(--ink);}
+
+  .team-label { font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--ink-faint); margin:0; }
+  .team-label.blue { color:var(--blue); } .team-label.red { color:var(--red); }
+
+  /* Team header row: team label on the left, role-overrides toggle on the right. */
+  .team-header-row { display:flex; align-items:center; justify-content:space-between;
+    margin:26px 0 10px; gap:12px; }
+  .roles-toggle { display:flex; align-items:center; gap:6px; cursor:pointer;
+    font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--ink-dim); user-select:none; }
+  .roles-toggle input { accent-color:var(--accent); cursor:pointer; margin:0; }
+  .roles-toggle:hover { color:var(--ink); }
+  .roles-note { color:var(--accent); letter-spacing:0.04em; text-transform:none; }
+
+  .boats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:620px){ .boats{grid-template-columns:1fr;} }
+
+  .boat { background:var(--panel); border:1px solid var(--line);
+    border-left:3px solid var(--auto); border-radius:var(--radius); padding:12px; }
+  .boat.blue { border-left-color:var(--blue); }
+  .boat.red  { border-left-color:var(--red); }
+  .boat.cmd-role    { border-left-color:var(--ok); }
+  .boat.cmd-posture { border-left-color:var(--blue); }
+
+  /* Active-behavior readout (the return channel from the boat). Color-codes the
+     behavior the boat reports it is actually executing, plus a source tag. */
+  .active { display:flex; align-items:center; gap:8px; margin:2px 0 10px;
+    font-size:11px; }
+  .active .beh { padding:3px 9px; border-radius:3px; letter-spacing:0.06em;
+    text-transform:uppercase; font-weight:600; color:#0d1117; }
+  .active .src { font-size:10px; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--ink-dim); font-weight:600; }
+  /* Source colors: each command type is visually distinct so you can tell at a
+     glance WHY a boat is doing what it's doing. role = per-boat command (green),
+     posture = team-wide command (cyan), reflex = safety override (amber),
+     auto = policy's own choice (dim grey). */
+  .active .src.role    { color:var(--ok); }
+  .active .src.posture { color:var(--blue); }
+  .active .src.reflex  { color:var(--warn); }
+  .active .src.auto    { color:var(--ink-faint); font-weight:400; }
+  .active .none { color:var(--ink-faint); font-style:italic; letter-spacing:0.04em; }
+  /* Behavior palette: distinct hue per behavior so active state is glanceable. */
+  .beh.attack  { background:#f0664d; }
+  .beh.defend  { background:#3fb0f0; }
+  .beh.chase   { background:#f0a202; }
+  .beh.escort  { background:#9d7cf0; }
+  .beh.patrol  { background:#56b58a; }
+  .beh.opening_patrol { background:#56b58a; }
+  .beh.carry   { background:#f0d24d; }
+  .beh.untag   { background:#d29922; }
+  .beh.wall_dodge { background:#8b97a6; }
+  .beh.obs_only   { background:#8b97a6; }
+  .beh.stop    { background:#5a6675; }
+  .beh.unknown { background:#5a6675; }
+
+  .boat-head { display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:10px; }
+  .boat-id { font-size:13px; letter-spacing:0.04em; }
+  .boat-state { font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--auto); }
+  .boat.cmd-role .boat-state    { color:var(--ok); }
+  .boat.cmd-posture .boat-state { color:var(--blue); }
+  /* Per-boat MOOS link dot: green = this boat's DB is connected, grey = not
+     linked (boat not running, or file-only). */
+  .link-dot { display:inline-block; width:7px; height:7px; border-radius:50%;
+    background:var(--ink-faint); margin-right:6px; vertical-align:middle; }
+  .link-dot.up { background:var(--ok); box-shadow:0 0 6px var(--ok); }
+
+  .lever { margin-top:8px; }
+  .lever-label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink-faint); margin-bottom:5px; }
+  .row { display:flex; flex-wrap:wrap; gap:4px; }
+  .chip { appearance:none; cursor:pointer; background:var(--panel-2);
+    border:1px solid var(--line); color:var(--ink-dim); border-radius:3px;
+    padding:6px 9px; font-family:var(--mono); font-size:11px; letter-spacing:0.05em;
+    text-transform:uppercase; transition:all .12s ease; }
+  .chip:hover { border-color:var(--accent-dim); color:var(--ink); }
+  .chip.active { background:var(--accent); border-color:var(--accent);
+    color:var(--bg); font-weight:600; }
+  .chip.auto.active { background:var(--auto); border-color:var(--auto); color:var(--ink); }
+  .chip:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .footer { margin-top:28px; display:flex; align-items:center;
+    justify-content:space-between; gap:12px; border-top:1px solid var(--line);
+    padding-top:16px; }
+
+  /* Warning banner: this control plane only affects the tyler_thesis (SAI)
+     entry, which reads the MCTF_* vars. Other entries ignore them. */
+  .banner { display:flex; gap:10px; align-items:flex-start;
+    background:rgba(210,153,34,0.10); border:1px solid var(--warn);
+    border-radius:var(--radius); padding:11px 13px; margin-top:14px;
+    font-size:12px; line-height:1.5; color:var(--ink); }
+  .banner .mark { color:var(--warn); font-weight:700; flex:none; }
+  .banner b { color:var(--warn); }
+
+  /* Team-wide posture bar (Option A): one row per team, sets every boat on
+     that team at once. The fast coarse lever; per-boat role overrides it. */
+  .team-posture { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin:0 0 12px; }
+  .team-posture .tp-label { font-size:10px; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--ink-faint); margin-right:2px; }
+  .seg { appearance:none; cursor:pointer; background:var(--panel);
+    border:1px solid var(--line); color:var(--ink-dim); border-radius:var(--radius);
+    padding:8px 16px; font-family:var(--mono); font-size:12px; letter-spacing:0.07em;
+    text-transform:uppercase; transition:all .12s ease; }
+  .seg:hover { border-color:var(--accent-dim); color:var(--ink); }
+  .seg.active { background:var(--accent); border-color:var(--accent);
+    color:var(--bg); font-weight:600; }
+  .seg.auto.active { background:var(--auto); border-color:var(--auto); color:var(--ink); }
+  .seg:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* Autonomy's chosen team posture tag (auto: defend/balance/adaptive). Sits at
+     the end of the team-posture bar. Colored by posture; dimmed when a manual
+     command overrides it (the command, not the autonomy, is then in control). */
+  .auto-posture { display:inline-flex; align-items:center; gap:5px; margin-left:8px;
+    padding:4px 9px; border-radius:3px; font-size:10px; letter-spacing:0.08em;
+    text-transform:uppercase; border:1px solid var(--line); }
+  .auto-posture .ap-key { color:var(--ink-faint); }
+  .auto-posture .ap-val { font-weight:600; }
+  .auto-posture.ap-defend   .ap-val { color:var(--blue); }
+  .auto-posture.ap-balance  .ap-val { color:var(--accent); }
+  .auto-posture.ap-adaptive .ap-val { color:var(--ink); }
+  .auto-posture.overridden { opacity:0.4; }
+  .reset { appearance:none; cursor:pointer; background:transparent;
+    border:1px solid var(--line); color:var(--ink-dim); border-radius:var(--radius);
+    padding:10px 16px; font-family:var(--mono); font-size:12px; letter-spacing:0.08em;
+    text-transform:uppercase; transition:all .12s ease; }
+  .reset:hover { border-color:var(--bad); color:var(--bad); }
+  .hint { color:var(--ink-faint); font-size:11px; max-width:380px; text-align:right; }
+  .filepath { color:var(--ink-faint); font-size:11px; word-break:break-all; margin-top:6px; }
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+  <header>
+    <h1>MCTF&nbsp;Control <span class="sub">// manual override</span></h1>
+    <div class="transport">
+      <span class="dot" id="t-dot"></span>
+      <span class="label">link</span><span class="mode" id="t-mode">…</span>
+    </div>
+  </header>
+
+  <div class="banner">
+    <span class="mark">&#9888;</span>
+    <span>This console only controls the <b>tyler_thesis</b> entry (the SAI
+      policy that reads the <code>MCTF_*</code> variables). Other competition
+      entries ignore these commands entirely &mdash; staging a different entry to
+      a boat makes these levers do nothing for that boat.</span>
+  </div>
+
+  <div id="teams"></div>
+
+  <div class="footer">
+    <button class="reset" id="reset">Hand all back to auto</button>
+    <div class="hint">
+      Each boat reads its own <code>MCTF_POSTURE_&lt;id&gt;</code> /
+      <code>MCTF_ROLE_&lt;id&gt;</code>. Role beats posture.
+      <div class="filepath" id="filepath"></div>
+    </div>
+  </div>
+
+<script>
+/* Thin face over the bridge. GET state, render per-boat levers, POST changes.
+   Commands are boat-qualified, so blue and red never collide. */
+const POLL_MS = 1000;
+let CFG = null;
+
+/* Per-team toggle for showing the role-override rows. Held here (not in the DOM)
+   because renderTeams rebuilds the DOM every poll -- DOM-only state would reset
+   each second. Default false: role rows hidden until the operator opts in per
+   team. Hiding is purely visual; an active role override still shows in each
+   boat's active-behavior chip, so a command is never invisible. */
+const SHOW_ROLES = { blue:false, red:false };
+
+async function getState(){ return (await fetch('/api/state')).json(); }
+async function postJSON(url, body){
+  return (await fetch(url,{method:'POST',
+    headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})).json();
+}
+function teamOf(boatId){ return boatId.startsWith('red') ? 'red' : 'blue'; }
+
+function renderTransport(snap){
+  const dot=document.getElementById('t-dot'), mode=document.getElementById('t-mode');
+  dot.className='dot';
+  // Per-boat topology: count how many boat DBs are actually linked. Each boat
+  // has its own MOOSDB, so "connected" is a count, not a single bool.
+  const links = snap.links || {};
+  const ids = Object.keys(links);
+  const up = ids.filter(b=>links[b].connected).length;
+  if(!snap.has_pymoos){
+    dot.classList.add('warn'); mode.textContent='FILE (no pymoos)';
+  } else if(up === 0){
+    dot.classList.add('warn'); mode.textContent='FILE (no boats linked)';
+  } else if(up < ids.length){
+    dot.classList.add('warn'); mode.textContent=`MOOSDB ${up}/${ids.length} boats`;
+  } else {
+    dot.classList.add('ok'); mode.textContent=`MOOSDB ${up}/${ids.length} boats`;
+  }
+  document.getElementById('filepath').textContent = snap.control_file || '';
+}
+
+function chipRow(values, current, onPick){
+  const row=document.createElement('div'); row.className='row';
+  values.forEach(v=>{
+    const c=document.createElement('button');
+    c.className='chip'+(v==='auto'?' auto':'')+(v===current?' active':'');
+    c.textContent=v; c.onclick=()=>onPick(v);
+    row.appendChild(c);
+  });
+  return row;
+}
+
+function boatCard(snap, boatId, showRoles){
+  const team=teamOf(boatId);
+  const pVar=CFG.posture_prefix+boatId, rVar=CFG.role_prefix+boatId;
+  const pCur=snap.state[pVar]||'auto', rCur=snap.state[rVar]||'auto';
+  // Border accent reflects WHICH command drives the boat (role wins over
+  // posture, matching the policy's precedence): 'cmd-role' for a per-boat role,
+  // 'cmd-posture' for a team posture, neither when on auto. This makes the card
+  // edge agree with the source tag in the active readout.
+  let cmdClass = '';
+  if (rCur !== 'auto')      cmdClass = ' cmd-role';
+  else if (pCur !== 'auto') cmdClass = ' cmd-posture';
+
+  const card=document.createElement('div');
+  card.className='boat '+team+cmdClass;
+
+  const head=document.createElement('div'); head.className='boat-head';
+  // Per-boat link dot: is THIS boat's MOOSDB connected? (each boat has its own)
+  const linkUp = (snap.links||{})[boatId] && snap.links[boatId].connected;
+  // Show the effective state: role wins if set, else show posture if non-auto.
+  const stateTxt = rCur!=='auto' ? ('role:'+rCur)
+                 : (pCur!=='auto' ? ('posture:'+pCur) : 'auto');
+  head.innerHTML = `<span class="boat-id">`+
+                   `<span class="link-dot${linkUp?' up':''}"></span>${boatId}</span>`+
+                   `<span class="boat-state">${stateTxt}</span>`;
+  card.appendChild(head);
+
+  // Active-behavior readout: what the BOAT reports it is actually executing.
+  // This is the confirmation channel -- color is the behavior, the tag is the
+  // source: role = per-boat command landed, posture = team command landed,
+  // auto = its own logic, reflex = a safety action overrode everything.
+  const act = (snap.active || {})[boatId];   // "behavior:source" or undefined
+  const actRow = document.createElement('div'); actRow.className='active';
+  if (act) {
+    const [beh, src] = act.split(':');
+    const behEl = document.createElement('span');
+    behEl.className = 'beh ' + (beh || 'unknown');
+    behEl.textContent = beh || 'unknown';
+    const srcEl = document.createElement('span');
+    srcEl.className = 'src ' + (src || '');
+    srcEl.textContent = src || '';
+    actRow.appendChild(behEl);
+    actRow.appendChild(srcEl);
+  } else {
+    // No report yet: boat isn't running, MOOS is down, or it's a different
+    // entry that doesn't publish status.
+    const none = document.createElement('span');
+    none.className='none'; none.textContent='no report';
+    actRow.appendChild(none);
+  }
+  card.appendChild(actRow);
+
+  // The per-boat ROLE lever, shown only when this team's "show roles" toggle is
+  // on (posture is the team-wide bar above). Hiding is visual only -- if a role
+  // is active while hidden, the active-behavior chip above still shows
+  // "<behavior> / role", so the command stays visible. We also keep the row
+  // visible regardless if THIS boat currently has a non-auto role, so an active
+  // command can always be seen and cleared even with the toggle off.
+  if (showRoles || rCur !== 'auto') {
+    const rL=document.createElement('div'); rL.className='lever';
+    rL.innerHTML='<div class="lever-label">role override</div>';
+    rL.appendChild(chipRow(CFG.valid_roles, rCur, async v=>{
+      await postJSON('/api/role',{boat_id:boatId,value:v}); refresh();
+    }));
+    card.appendChild(rL);
+  }
+
+  return card;
+}
+
+/* The team posture bar reflects the COMMON posture across a team's boats: if
+   every boat on the team shares one posture value, that segment is highlighted;
+   if they're mixed (e.g. one boat was individually changed), none is. */
+function teamCommonPosture(snap, ids){
+  const vals = ids.map(b => snap.state[CFG.posture_prefix+b] || 'auto');
+  return vals.every(v => v === vals[0]) ? vals[0] : null;
+}
+
+function teamPostureBar(snap, team, ids){
+  const bar=document.createElement('div'); bar.className='team-posture';
+  const lab=document.createElement('span'); lab.className='tp-label';
+  lab.textContent='team posture'; bar.appendChild(lab);
+  const common=teamCommonPosture(snap, ids);
+  CFG.valid_postures.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='seg'+(p==='auto'?' auto':'')+(p===common?' active':'');
+    b.textContent=p;
+    b.onclick=async()=>{ await postJSON('/api/team_posture',{team:team,value:p}); refresh(); };
+    bar.appendChild(b);
+  });
+  // Autonomy's chosen team posture (what the auto logic runs when not commanded,
+  // from the score). Shown as an "auto: <posture>" tag so you can see the
+  // autonomy's stance even while the manual bar sits on 'auto'. If the whole
+  // team IS commanded to one posture, the auto tag is dimmed (the command wins).
+  const ap = (snap.auto_posture || {})[team];
+  if (ap) {
+    const commanded = common && common !== 'auto';
+    const tag=document.createElement('span');
+    tag.className='auto-posture'+(commanded?' overridden':'')+' ap-'+ap;
+    tag.innerHTML = `<span class="ap-key">auto</span>`+
+                    `<span class="ap-val">${ap}</span>`;
+    bar.appendChild(tag);
+  }
+  return bar;
+}
+
+function teamRolesToggle(team, ids, snap){
+  // Checkbox that reveals this team's role-override rows. Reflects SHOW_ROLES,
+  // which persists across the per-second re-render.
+  const wrap=document.createElement('label'); wrap.className='roles-toggle';
+  const cb=document.createElement('input'); cb.type='checkbox';
+  cb.checked=SHOW_ROLES[team];
+  cb.onchange=()=>{ SHOW_ROLES[team]=cb.checked; renderTeams(snap); };
+  wrap.appendChild(cb);
+  const txt=document.createElement('span');
+  txt.textContent='role overrides';
+  wrap.appendChild(txt);
+  // If any boat on the team has an active role while the toggle is OFF, note
+  // that its row is shown anyway (so the operator knows why a row is visible).
+  if(!SHOW_ROLES[team]){
+    const anyActive = ids.some(b => (snap.state[CFG.role_prefix+b]||'auto')!=='auto');
+    if(anyActive){
+      const note=document.createElement('span'); note.className='roles-note';
+      note.textContent='(active override shown)';
+      wrap.appendChild(note);
+    }
+  }
+  return wrap;
+}
+
+function renderTeams(snap){
+  const root=document.getElementById('teams'); root.innerHTML='';
+  ['blue','red'].forEach(team=>{
+    const ids=CFG.boat_ids.filter(b=>teamOf(b)===team);
+    if(!ids.length) return;
+    // Team header row: label + the role-overrides toggle on the right.
+    const header=document.createElement('div'); header.className='team-header-row';
+    const lab=document.createElement('div');
+    lab.className='team-label '+team; lab.textContent=team+' team';
+    header.appendChild(lab);
+    header.appendChild(teamRolesToggle(team, ids, snap));
+    root.appendChild(header);
+    root.appendChild(teamPostureBar(snap, team, ids));   // Option A: team-wide lever
+    const grid=document.createElement('div'); grid.className='boats';
+    ids.forEach(b=>grid.appendChild(boatCard(snap, b, SHOW_ROLES[team])));
+    root.appendChild(grid);
+  });
+}
+
+async function refresh(){
+  const snap=await getState();
+  if(!CFG){
+    CFG={ boat_ids:snap.boat_ids, valid_postures:snap.valid_postures,
+          valid_roles:snap.valid_roles, posture_prefix:snap.posture_prefix,
+          role_prefix:snap.role_prefix };
+  }
+  renderTransport(snap);
+  renderTeams(snap);
+}
+
+document.getElementById('reset').onclick=async()=>{ await postJSON('/api/reset',{}); refresh(); };
+refresh(); setInterval(refresh, POLL_MS);
+</script>
+</body>
+</html>

@@ -14,6 +14,7 @@
         .btn-boats   { background:#047857; color:#fff; border:none; border-radius:6px; }
         .btn-shore   { background:#7c3aed; color:#fff; border:none; border-radius:6px; }
         .btn-stop    { background:#b91c1c; color:#fff; border:none; border-radius:6px; }
+        .btn-control { background:#b45309; color:#fff; border:none; border-radius:6px; }
         .team-card { border:1px solid #ddd; border-radius:8px; padding:1rem; margin-bottom:1rem; }
         .team-header.blue { color:#1d4ed8; }
         .team-header.red  { color:#b91c1c; }
@@ -42,9 +43,30 @@
             <button class="btn-all"   onclick="post('/launch_all')">Launch All (shoreside + boats)</button>
             <button class="btn-boats" onclick="post('/launch_boats')">Launch Boats</button>
             <button class="btn-shore" onclick="post('/launch_shoreside')">Launch Shoreside</button>
+            <button class="btn-control" onclick="launchControl()">Launch MCTF Control</button>
             <button class="btn-stop"  onclick="stop('/stop_all', 'everything')">Stop All</button>
         </div>
         <div id="flash"></div>
+
+        <!-- Manual-control bridge row (its own status + output panel), so you can
+             see if the control UI process is up and stop it on its own. -->
+        <div class="team-card">
+            <div class="agent-row">
+                <div class="agent-info">
+                    <span class="status-dot" id="dot-mctf_control"></span>
+                    <strong>mctf_control</strong>
+                    &nbsp;manual-override UI &middot; tyler_thesis entry only
+                </div>
+                <div class="agent-buttons">
+                    <button onclick="launchControl()">Launch</button>
+                    <button onclick="openControl()">Open window</button>
+                    <button onclick="stop('/stop_proc/mctf_control', 'mctf_control')">Stop</button>
+                    <button onclick="toggleOutput('mctf_control')">Show output</button>
+                    <button onclick="copyOutput('mctf_control')">Copy output</button>
+                </div>
+            </div>
+            <div class="output-panel" id="out-mctf_control"></div>
+        </div>
 
         <!-- Shoreside row (its own status + output panel) -->
         <div class="team-card">
@@ -108,6 +130,10 @@
 // Which output panels are currently expanded (so polling only repaints those).
 const expanded = new Set();
 
+// URL of the manual-control UI (the bridge serves it). Filled from the
+// /launch_control response, defaults to the conventional port.
+let CONTROL_URL = 'http://127.0.0.1:5005';
+
 function flash(msg) {
     document.getElementById('flash').textContent = msg;
 }
@@ -128,6 +154,35 @@ async function post(path) {
     } catch (e) {
         flash('Request failed: ' + e);
     }
+}
+
+// Launch the manual-control bridge, then open its UI in a SEPARATE window.
+// Two steps: start the process (server route), then window.open the URL it
+// returns. If it was already running, the route says so and we still open it.
+async function launchControl() {
+    flash('Launching MCTF control ...');
+    try {
+        const r = await fetch('/launch_control', { method: 'POST' });
+        const data = await r.json();
+        if (data.url) CONTROL_URL = data.url;
+        flash('MCTF control: ' + (data.message || 'done'));
+        refresh();
+        // Give the bridge a moment to bind its port before opening the window.
+        setTimeout(openControl, 1200);
+    } catch (e) {
+        flash('Launch failed: ' + e);
+    }
+}
+
+// Open (or focus) the control UI in its own window -- not a tab. The window
+// name 'mctf_control' means repeated clicks reuse the same window instead of
+// stacking new ones. Sized for the console layout.
+function openControl() {
+    window.open(
+        CONTROL_URL,
+        'mctf_control',
+        'width=960,height=900,menubar=no,toolbar=no,location=no,status=no'
+    );
 }
 
 // Dedicated stop helper: shows a clear confirmation and refreshes dots at once

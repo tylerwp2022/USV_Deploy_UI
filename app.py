@@ -41,6 +41,7 @@
 # =============================================================================
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+import atexit
 import json
 import os
 import re
@@ -86,8 +87,21 @@ MISSION_PATH = os.environ.get(
     'MCTF_MISSION_PATH', '/home/tyler/moos-ivp-mctf/missions/tyler_thesis')
 
 # Simulation time warp. Boats and shoreside MUST share this or pHelmIvP throws
-# clock-skew errors (see README). Old per-boat code hardcoded 4; centralized here.
-SIM_TIMEWARP = 4
+# clock-skew errors (see README). Old per-boat code hardcoded 4; centralized
+# here and made configurable via MCTF_TIME_WARP (set in run.sh) so you can drop
+# to 1x for human-in-the-loop manual control -- 4x changes the game state faster
+# than an operator can react to. Default stays 4 for fast unattended runs.
+# Applies to SIM only; on real hardware boats run at 1x regardless (see
+# boat_command). Both shoreside and boats read this one value, so they always
+# agree on the warp.
+try:
+    SIM_TIMEWARP = float(os.environ.get('MCTF_TIME_WARP', '4'))
+    # Use an int when it's whole (warp 4, not 4.0) -- the launch scripts and
+    # MOOS expect a clean integer for typical warps; fractional is allowed too.
+    if SIM_TIMEWARP == int(SIM_TIMEWARP):
+        SIM_TIMEWARP = int(SIM_TIMEWARP)
+except (TypeError, ValueError):
+    SIM_TIMEWARP = 4
 
 # SSH credentials for hardware mode (LAN-only convenience; Pi defaults).
 USERNAME = 'pi'
@@ -145,10 +159,14 @@ def _reader_thread(name, proc, buffer, logfile_path):
             pass
 
 
-def _spawn(name, cmd, cwd):
+def _spawn(name, cmd, cwd, env=None):
     """Start `cmd` (a list) as a backgrounded process in its own process group,
     register it, and attach a reader thread. If a process with this name is
-    already alive, refuse (caller should stop it first). Returns (ok, message)."""
+    already alive, refuse (caller should stop it first). Returns (ok, message).
+
+    `env` (optional): a full environment dict for the child. When None the child
+    inherits this app's environment (the default and what boats use). Callers
+    that need an extra var pass dict(os.environ, KEY=VAL)."""
     with PROCS_LOCK:
         existing = PROCS.get(name)
         if existing and existing['popen'].poll() is None:
@@ -164,6 +182,7 @@ def _spawn(name, cmd, cwd):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             start_new_session=True,
+            env=env,                      # None -> inherit (Popen's default)
         )
         buffer = deque(maxlen=BUFFER_LINES)
         t = threading.Thread(
@@ -181,23 +200,65 @@ def _spawn(name, cmd, cwd):
 
 def _stop(name):
     """Kill the process group for `name` (tears down the launcher AND the MOOS
-    community it spawned). Returns (ok, message)."""
+    community it spawned). Returns (ok, message).
+
+    Escalates: SIGTERM first (clean shutdown, which the MOOS apps honor), then
+    -- if the process is still alive after a short grace period -- SIGKILL. WHY
+    the escalation: not every child dies on SIGTERM. The Flask control bridge in
+    particular can ignore SIGTERM (the dev server doesn't always wire it up), so
+    a single SIGTERM would leave it running and holding port 5005, and the old
+    code returned "stopped" without checking. The SIGKILL backstop guarantees
+    the process is actually gone before we report success.
+
+    NOTE on locking: we take PROCS_LOCK only to look up the record, then RELEASE
+    it before the kill-and-wait. Holding it across the up-to-~3s wait would block
+    /status polling and other launches/stops. The Popen object is safe to use
+    after releasing the lock (we're not mutating PROCS here)."""
     with PROCS_LOCK:
         rec = PROCS.get(name)
-        if not rec:
-            return False, f"{name}: not found (never launched this session)"
-        proc = rec['popen']
+    if not rec:
+        return False, f"{name}: not found (never launched this session)"
+    proc = rec['popen']
+    if proc.poll() is not None:
+        return True, f"{name}: already exited"
+    pid = proc.pid
+    try:
+        pgid = os.getpgid(pid)
+    except ProcessLookupError:
+        return True, f"{name}: already gone"
+
+    # 1) Polite SIGTERM to the whole group.
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except ProcessLookupError:
+        return True, f"{name}: already gone"
+    except Exception as e:
+        return False, f"{name}: failed to stop ({e})"
+
+    # 2) Wait up to ~2s for it to actually exit, polling the parent PID.
+    died = False
+    for _ in range(20):
         if proc.poll() is not None:
-            return True, f"{name}: already exited"
+            died = True
+            break
+        time.sleep(0.1)
+
+    # 3) Still alive? Escalate to SIGKILL (can't be ignored).
+    if not died:
         try:
-            # Kill the whole process group (negative pid). SIGTERM first; the
-            # MOOS apps generally exit cleanly on it.
-            pid = proc.pid
-            os.killpg(os.getpgid(pid), signal.SIGTERM)
+            os.killpg(pgid, signal.SIGKILL)
         except ProcessLookupError:
-            return True, f"{name}: already gone"
+            died = True
         except Exception as e:
-            return False, f"{name}: failed to stop ({e})"
+            return False, f"{name}: SIGTERM ignored, SIGKILL failed ({e})"
+        for _ in range(10):
+            if proc.poll() is not None:
+                died = True
+                break
+            time.sleep(0.1)
+        return (True, f"{name}: stopped via SIGKILL (was pid {pid})" if died
+                else f"{name}: may still be running (pid {pid})")
+
     return True, f"{name}: stopped (was pid {pid})"
 
 
@@ -427,6 +488,54 @@ def launch_boat():
     return jsonify({'ok': False, 'message': f'unknown boat {boat_id}'})
 
 
+# Name under which the manual-control bridge is tracked in PROCS. Using a fixed
+# logical name means Stop All tears it down with everything else, and /status
+# reports its liveness dot, exactly like a boat.
+CONTROL_PROC_NAME = 'mctf_control'
+CONTROL_UI_PORT = 5005
+
+
+@app.route('/launch_control', methods=['POST'])
+def launch_control():
+    """Launch the manual-control bridge (the MCTF override UI) as a tracked
+    process. Idempotent: _spawn refuses if it's already running.
+
+    WHY sys.executable: this app IS a Flask app, so the interpreter running it
+    is guaranteed to have Flask -- which the bridge needs. (Boats use the same
+    interpreter via boat_command, but they only need pyquaticus; the bridge
+    needs Flask, and app.py's interpreter has it by definition.)
+
+    The bridge inherits this app's environment, so MCTF_CONTROL_FILE (set by
+    run.sh) flows through to it -- the bridge and the boats then share the same
+    fallback control file. We also pass the roster from wp_config.json so the
+    bridge's boat list always matches the actual mission, not its own default.
+    """
+    config = load_config()
+    boat_ids = [b['boat_id'] for _, b in all_boats(config)]
+
+    # The bridge lives in ./control/ next to this app.
+    control_script = os.path.join(BASE_DIR, 'control', 'mctf_control_server.py')
+    if not os.path.exists(control_script):
+        return jsonify({'ok': False,
+                        'message': f'control server not found at {control_script}'})
+
+    # Pass the live roster so the UI matches wp_config.json exactly. The bridge
+    # otherwise inherits this app's environment, so MCTF_CONTROL_FILE (set by
+    # run.sh) flows through and the bridge + boats share the same fallback file.
+    # We also pass the wp_config.json path so the bridge reads the SAME per-boat
+    # MOOSDB ports the harness uses (each boat has its own DB; the bridge opens
+    # one connection per boat to read status and write commands).
+    child_env = dict(os.environ,
+                     MCTF_BOAT_IDS=','.join(boat_ids),
+                     MCTF_WP_CONFIG=CONFIG_PATH)
+
+    cmd = [sys.executable, '-u', control_script]
+    ok, msg = _spawn(CONTROL_PROC_NAME, cmd, cwd=BASE_DIR, env=child_env)
+    if ok:
+        msg += f" -- open http://127.0.0.1:{CONTROL_UI_PORT} in a new window"
+    return jsonify({'ok': ok, 'message': msg, 'url': f'http://127.0.0.1:{CONTROL_UI_PORT}'})
+
+
 # -----------------------------------------------------------------------------
 # Stop routes
 # -----------------------------------------------------------------------------
@@ -476,6 +585,47 @@ def status():
             'output': list(rec['buffer']),
         }
     return jsonify(out)
+
+
+def _cleanup_all_on_exit():
+    """Stop every tracked process when the console itself shuts down.
+
+    WHY: without this, killing the console (Ctrl-C, SIGTERM, or a crash) leaves
+    every child in PROCS running -- boats AND the control bridge. The boats are
+    loud enough to notice, but the bridge is silent and would orphan, holding
+    port 5005 against the next run. This handler tears them all down so closing
+    the console closes everything it launched. It's idempotent and safe to call
+    more than once (already-dead processes are skipped by _stop)."""
+    with PROCS_LOCK:
+        names = list(PROCS.keys())
+    for name in names:
+        try:
+            _stop(name)
+        except Exception:
+            pass
+
+
+# Register for normal interpreter exit (covers Ctrl-C after Flask returns, and
+# any clean shutdown). We also catch SIGTERM explicitly so `kill` of the console
+# triggers the same cleanup rather than dropping children.
+atexit.register(_cleanup_all_on_exit)
+
+
+def _on_signal(signum, frame):
+    # Clean up children, then exit. _cleanup_all_on_exit is idempotent, so it's
+    # fine that atexit may also run it. We raise SystemExit (via sys.exit) rather
+    # than os._exit so stdout/log buffers still flush on the way out.
+    _cleanup_all_on_exit()
+    sys.exit(0)
+
+
+for _sig in (signal.SIGTERM, signal.SIGINT):
+    try:
+        signal.signal(_sig, _on_signal)
+    except Exception:
+        # Signal handlers can only be set in the main thread; if app.py is ever
+        # imported off-thread this is a no-op, which is fine.
+        pass
 
 
 if __name__ == '__main__':
